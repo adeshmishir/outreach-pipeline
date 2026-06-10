@@ -6,7 +6,8 @@ import { findDecisionMakers } from "./services/prospeo.js";
 import { resolveEmails } from "./services/eazyreach.js";
 import { stage } from "./utils/logger.js";
 import { validateDomain } from "./utils/validateDomain.js";
-    import { filterVerifiedEmails } from "./utils/filterVerifiedEmails.js";
+import { filterVerifiedEmails } from "./utils/filterVerifiedEmails.js";
+import { printSummary } from "./utils/printSummary.js";
 
 dotenv.config({ quiet: true });
 
@@ -27,34 +28,38 @@ console.log("Seed domain:", domain);
 
 stage("1. Ocean - Find lookalike companies");
 const companies = await findLookalikeCompanies(domain);
-
+if (companies.length === 0) {
+  throw new Error("No lookalike companies found.");
+}
 console.log("Companies found:");
 console.table(companies);
 
 stage("2. Prospeo - Find decision makers");
 const contacts = await findDecisionMakers(companies);
-
+if (contacts.length === 0) {
+  throw new Error("No decision makers found.");
+}
 console.log("Contacts found:");
 console.table(contacts);
+
 
 stage("3. Eazyreach - Resolve emails");
 const prospects = await resolveEmails(contacts);
 const verifiedProspects = filterVerifiedEmails(prospects);
-
+if (verifiedProspects.length === 0) {
+  throw new Error("No verified email addresses found.");
+}
 console.log("Verified Prospects with emails:");
 console.table(verifiedProspects);
 
 stage("4. Safety Checkpoint");
 
-console.log("\nPipeline Summary:");
-console.table([
-  {
-    companiesFound: companies.length,
-    contactsFound: contacts.length,
-    emailsResolved: prospects.length,
-    verifiedEmails: verifiedProspects.length,
-  },
-]);
+printSummary({
+  companiesFound: companies.length,
+  contactsFound: contacts.length,
+  emailsResolved: prospects.length,
+  verifiedEmails: verifiedProspects.length,
+});
 
 
 const answer = readline.question("Send emails now? yes/no: ");
